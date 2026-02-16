@@ -282,7 +282,12 @@ class TaskProxy(object):
         run_at = schedule.run_at
         priority = kwargs.pop('priority', schedule.priority)
         action = schedule.action
+        has_explicit_queue = 'queue' in kwargs
         queue = kwargs.pop('queue', self.queue)
+        # Apply default queue only when caller does not pass queue at all
+        # and decorator-level queue is not set.
+        if queue is None and not has_explicit_queue:
+            queue = app_settings.BACKGROUND_TASK_DEFAULT_QUEUE
         verbose_name = kwargs.pop('verbose_name', None)
         creator = kwargs.pop('creator', None)
         repeat = kwargs.pop('repeat', None)

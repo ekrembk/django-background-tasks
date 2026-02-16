@@ -703,6 +703,50 @@ class NamedQueueTestCase(TransactionTestCase):
         run_next_task()
 
 
+completed_default_queue_tasks = []
+
+
+@background
+def default_queue_task(message):
+    completed_default_queue_tasks.append(message)
+
+
+class DefaultQueueSettingTestCase(TransactionTestCase):
+
+    def setUp(self):
+        completed_default_queue_tasks[:] = []
+
+    @override_settings(BACKGROUND_TASK_DEFAULT_QUEUE='default')
+    def test_missing_queue_uses_default_queue_setting(self):
+        default_queue_task('test-default')
+        task = Task.objects.all()[0]
+        self.assertEqual('default', task.queue)
+
+        run_next_task(queue='default')
+        self.assertIn('test-default', completed_default_queue_tasks, msg='Task should be processed')
+
+    @override_settings(BACKGROUND_TASK_DEFAULT_QUEUE='default')
+    def test_explicit_queue_wins_over_default_queue_setting(self):
+        default_queue_task('test-custom', queue='custom')
+        task = Task.objects.all()[0]
+        self.assertEqual('custom', task.queue)
+
+        run_next_task(queue='default')
+        self.assertNotIn('test-custom', completed_default_queue_tasks, msg='Task should not be processed by default queue')
+
+        run_next_task(queue='custom')
+        self.assertIn('test-custom', completed_default_queue_tasks, msg='Task should be processed by custom queue')
+
+    @override_settings(BACKGROUND_TASK_DEFAULT_QUEUE='default')
+    def test_explicit_none_queue_skips_default_queue_setting(self):
+        default_queue_task('test-none', queue=None)
+        task = Task.objects.all()[0]
+        self.assertIsNone(task.queue)
+
+        run_next_task(queue='default')
+        self.assertNotIn('test-none', completed_default_queue_tasks, msg='Task should not be processed by default queue')
+
+
 class RepetitionTestCase(TransactionTestCase):
 
     def setUp(self):

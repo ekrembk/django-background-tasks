@@ -58,4 +58,12 @@ class AppSettings(object):
             prefix = '-'
         return prefix
 
+    @property
+    def BACKGROUND_TASK_DEFAULT_QUEUE(self):
+        """
+        Queue name used when a task call does not provide any queue.
+        Keep None for backward compatibility.
+        """
+        return getattr(settings, 'BACKGROUND_TASK_DEFAULT_QUEUE', None)
+
 app_settings = AppSettings()
