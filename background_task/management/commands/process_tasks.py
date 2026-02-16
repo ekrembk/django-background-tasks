@@ -78,10 +78,22 @@ class Command(BaseCommand):
         self.sig_manager = None
         self._tasks = tasks
 
+    def _normalize_queue(self, queue):
+        if not queue:
+            return None
+        if isinstance(queue, str):
+            queues = [item.strip() for item in queue.split(',') if item.strip()]
+            if not queues:
+                return None
+            if len(queues) == 1:
+                return queues[0]
+            return queues
+        return queue
+
     def run(self, *args, **options):
         duration = options.get('duration', 0)
         sleep = options.get('sleep', 5.0)
-        queue = options.get('queue', None)
+        queue = self._normalize_queue(options.get('queue', None))
         log_std = options.get('log_std', False)
         is_dev = options.get('dev', False)
         sig_manager = self.sig_manager

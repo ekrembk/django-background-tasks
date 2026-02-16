@@ -12,7 +12,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
-from six import python_2_unicode_compatible
+from six import python_2_unicode_compatible, string_types
 
 from background_task.exceptions import InvalidTaskError
 from background_task.settings import app_settings
@@ -48,7 +48,23 @@ class TaskManager(models.Manager):
         now = timezone.now()
         qs = self.unlocked(now)
         if queue:
-            qs = qs.filter(queue=queue)
+            if isinstance(queue, string_types):
+                # Support comma-separated queue values from process_tasks --queue.
+                queue_names = [name.strip() for name in queue.split(',') if name.strip()]
+                if len(queue_names) > 1:
+                    qs = qs.filter(queue__in=queue_names)
+                elif queue_names:
+                    qs = qs.filter(queue=queue_names[0])
+                else:
+                    qs = qs.none()
+            elif isinstance(queue, (list, tuple, set)):
+                queue_names = [name for name in queue if name]
+                if queue_names:
+                    qs = qs.filter(queue__in=queue_names)
+                else:
+                    qs = qs.none()
+            else:
+                qs = qs.filter(queue=queue)
         ready = qs.filter(run_at__lte=now, failed_at=None)
         _priority_ordering = '{}priority'.format(
             app_settings.BACKGROUND_TASK_PRIORITY_ORDERING)

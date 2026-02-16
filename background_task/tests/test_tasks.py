@@ -684,7 +684,19 @@ def named_queue_task(message):
     completed_named_queue_tasks.append(message)
 
 
+completed_secondary_named_queue_tasks = []
+
+
+@background(queue='other_named_queue')
+def other_named_queue_task(message):
+    completed_secondary_named_queue_tasks.append(message)
+
+
 class NamedQueueTestCase(TransactionTestCase):
+
+    def setUp(self):
+        completed_named_queue_tasks[:] = []
+        completed_secondary_named_queue_tasks[:] = []
 
     def test_process_queue(self):
         named_queue_task('test1')
@@ -701,6 +713,34 @@ class NamedQueueTestCase(TransactionTestCase):
         run_next_task(queue='other_named_queue')
         self.assertNotIn('test3', completed_named_queue_tasks, msg='Task should be ignored')
         run_next_task()
+
+    def test_process_multiple_queues_list(self):
+        named_queue_task('test-multi-1')
+        other_named_queue_task('test-multi-2')
+
+        run_next_task(queue=['named_queue', 'other_named_queue'])
+        run_next_task(queue=['named_queue', 'other_named_queue'])
+
+        self.assertIn('test-multi-1', completed_named_queue_tasks, msg='named_queue task should be processed')
+        self.assertIn(
+            'test-multi-2',
+            completed_secondary_named_queue_tasks,
+            msg='other_named_queue task should be processed',
+        )
+
+    def test_process_multiple_queues_csv_string(self):
+        named_queue_task('test-csv-1')
+        other_named_queue_task('test-csv-2')
+
+        run_next_task(queue='named_queue,other_named_queue')
+        run_next_task(queue='named_queue,other_named_queue')
+
+        self.assertIn('test-csv-1', completed_named_queue_tasks, msg='named_queue task should be processed')
+        self.assertIn(
+            'test-csv-2',
+            completed_secondary_named_queue_tasks,
+            msg='other_named_queue task should be processed',
+        )
 
 
 completed_default_queue_tasks = []
