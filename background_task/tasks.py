@@ -6,6 +6,7 @@ from importlib import import_module
 from multiprocessing.pool import ThreadPool
 import logging
 import os
+import socket
 import sys
 
 from django.db.utils import OperationalError
@@ -211,7 +212,7 @@ class DBTaskRunner(object):
     '''
 
     def __init__(self):
-        self.worker_name = str(os.getpid())
+        self.worker_name = '{}-{}'.format(socket.gethostname(), os.getpid())
 
     def schedule(self, task_name, args, kwargs, run_at=None,
                  priority=0, action=TaskSchedule.SCHEDULE, queue=None,
@@ -243,7 +244,7 @@ class DBTaskRunner(object):
     def get_task_to_run(self, tasks, queue=None):
         try:
             available_tasks = [task for task in Task.objects.find_available(queue)
-                               if task.task_name in tasks._tasks][:50]
+                               if task.task_name in tasks._tasks][:100]
             for task in available_tasks:
                 # try to lock task
                 locked_task = task.lock(self.worker_name)
